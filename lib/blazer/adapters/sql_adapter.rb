@@ -40,7 +40,11 @@ module Blazer
       end
 
       def tables
-        sql = add_schemas("SELECT table_schema, table_name FROM information_schema.tables")
+        if information_schema_present_for_oracle_enhanced?
+          sql = add_schemas("SELECT table_schema, table_name FROM information_schema.tables")
+        else
+          sql = add_schemas("SELECT * FROM (SELECT owner as table_schema, table_name FROM all_tables)")
+        end
         result = data_source.run_statement(sql, refresh_cache: true)
         if postgresql? || redshift? || snowflake?
           result.rows.sort_by { |r| [r[0] == default_schema ? "" : r[0], r[1]] }.map do |row|
@@ -64,7 +68,11 @@ module Blazer
       end
 
       def schema
-        sql = add_schemas("SELECT table_schema, table_name, column_name, data_type, ordinal_position FROM information_schema.columns")
+        if information_schema_present_for_oracle_enhanced?
+          sql = add_schemas("SELECT table_schema, table_name, column_name, data_type, ordinal_position FROM information_schema.columns")
+        else
+          sql = add_schemas("SELECT * FROM (SELECT owner as table_schema, table_name, column_name, data_type, 0 as ordinal_position FROM ALL_TAB_COLUMNS)")
+        end
         result = data_source.run_statement(sql)
         result.rows.group_by { |r| [r[0], r[1]] }.map { |k, vs| {schema: k[0], table: k[1], columns: vs.sort_by { |v| v[2] }.map { |v| {name: v[2], data_type: v[3]} }} }.sort_by { |t| [t[:schema] == default_schema ? "" : t[:schema], t[:table]] }
       end
@@ -72,6 +80,8 @@ module Blazer
       def preview_statement
         if sqlserver?
           "SELECT TOP (10) * FROM {table}"
+        elsif oracle_enhanced?
+          "SELECT * FROM {table} WHERE ROWNUM <= 10"
         else
           "SELECT * FROM {table} LIMIT 10"
         end
@@ -146,12 +156,26 @@ module Blazer
         ["MySQL", "Mysql2", "Mysql2Spatial"].include?(adapter_name)
       end
 
+      def oracle_enhanced?
+        ["OracleEnhanced"].include?(adapter_name)
+      end
+
       def sqlserver?
         ["SQLServer", "tinytds", "mssql"].include?(adapter_name)
       end
 
       def snowflake?
         data_source.adapter == "snowflake"
+      end
+
+      def information_schema_present_for_oracle_enhanced?
+        if oracle_enhanced?
+          sql = "SELECT COUNT(*) FROM information_schema.columns"
+          result = data_source.run_statement(sql)
+          !result.error.presence.match?("table or view does not exist")
+        else
+          true
+        end
       end
 
       def adapter_name

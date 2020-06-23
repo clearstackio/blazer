@@ -11,7 +11,7 @@ module Blazer
 
     validates :statement, presence: true
 
-    scope :named, -> { where("blazer_queries.name <> ''") }
+    scope :named, -> { where("blazer_queries.name IS NOT NULL") }
 
     def to_param
       [id, name].compact.join("-").gsub("'", "").parameterize
