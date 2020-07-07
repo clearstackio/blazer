@@ -15,12 +15,15 @@ module Blazer
           end
       end
 
-      def run_statement(statement, comment)
+      def run_statement(statement, comment, options = {})
         columns = []
         rows = []
         error = nil
 
+        options[:force] ||= false
+
         begin
+          check_if_table_queriable?(statement) unless options[:force]
           in_transaction do
             set_timeout(data_source.timeout) if data_source.timeout
 
@@ -45,7 +48,7 @@ module Blazer
         else
           sql = add_schemas("SELECT * FROM (SELECT owner as table_schema, table_name FROM all_tables)")
         end
-        result = data_source.run_statement(sql, refresh_cache: true)
+        result = data_source.run_statement(sql, refresh_cache: true, force: true)
         if postgresql? || redshift? || snowflake?
           result.rows.sort_by { |r| [r[0] == default_schema ? "" : r[0], r[1]] }.map do |row|
             table =
@@ -73,7 +76,7 @@ module Blazer
         else
           sql = add_schemas("SELECT * FROM (SELECT owner as table_schema, table_name, column_name, data_type, 0 as ordinal_position FROM ALL_TAB_COLUMNS)")
         end
-        result = data_source.run_statement(sql)
+        result = data_source.run_statement(sql, force: true)
         result.rows.group_by { |r| [r[0], r[1]] }.map { |k, vs| {schema: k[0], table: k[1], columns: vs.sort_by { |v| v[2] }.map { |v| {name: v[2], data_type: v[3]} }} }.sort_by { |t| [t[:schema] == default_schema ? "" : t[:schema], t[:table]] }
       end
 
@@ -171,7 +174,7 @@ module Blazer
       def information_schema_present_for_oracle_enhanced?
         if oracle_enhanced?
           sql = "SELECT COUNT(*) FROM information_schema.columns"
-          result = data_source.run_statement(sql)
+          result = data_source.run_statement(sql, force: true)
           !result.error.presence.match?("table or view does not exist")
         else
           true
@@ -205,7 +208,15 @@ module Blazer
           schemas.map!(&:upcase) if snowflake?
           schemas << "pg_catalog" if postgresql? || redshift?
         end
-        connection_model.send(:sanitize_sql_array, ["#{query} WHERE #{where}", schemas])
+        if only_tables_defined?
+          where += " AND table_name IN (?)"
+          connection_model.send(:sanitize_sql_array, ["#{query} WHERE #{where}", schemas, settings["only_tables"]])
+        elsif except_tables_defined?
+          where += " AND table_name NOT IN (?)"
+          connection_model.send(:sanitize_sql_array, ["#{query} WHERE #{where}", schemas, settings["except_tables"]])
+        else
+          connection_model.send(:sanitize_sql_array, ["#{query} WHERE #{where}", schemas])
+        end
       end
 
       def set_timeout(timeout)
@@ -239,6 +250,46 @@ module Blazer
             yield
           end
         end
+      end
+
+      def check_if_table_queriable?(statement)
+        if only_tables_defined?
+          check_for_only_tables(statement)
+        elsif except_tables_defined?
+          check_for_except_tables(statement)
+        end
+      end
+
+      def check_for_only_tables(statement)
+        table_name = parse_table_name_from_statement(statement)
+        if table_name
+          unless settings['only_tables'].map{|name| name.upcase }.include? table_name
+            raise Blazer::Error, "You are now allowed to perform queries on #{table_name} table"
+          end
+        end
+      end
+
+      def check_for_except_tables(statement)
+        table_name = parse_table_name_from_statement(statement)
+        if table_name
+          if settings['except_tables'].map{|name| name.upcase }.include? table_name
+            raise Blazer::Error, "You are now allowed to perform queries on #{table_name} table"
+          end
+        end
+      end
+
+      def parse_table_name_from_statement(statement)
+        table_name_regex = /FROM [A-Z]+(_[A-Z]+)?(\.[A-Z]+)?/
+        table_name = table_name_regex.match(statement&.upcase)
+        table_name.to_s.split(' ').last
+      end
+
+      def only_tables_defined?
+        settings['only_tables'] && settings['only_tables'].is_a?(Array)
+      end
+
+      def except_tables_defined?
+        settings['except_tables'] && settings['except_tables'].is_a?(Array)
       end
     end
   end
