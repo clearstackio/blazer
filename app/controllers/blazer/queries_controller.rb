@@ -20,6 +20,7 @@ module Blazer
             name: d.name,
             creator: blazer_user && d.try(:creator) == blazer_user ? "You" : d.try(:creator).try(Blazer.user_name),
             to_param: d.to_param,
+            created_at: d.created_at.strftime('%Y-%m-%d %H:%M:%S %Z'),
             dashboard: true
           }
         end
@@ -270,7 +271,7 @@ module Blazer
       end
 
       def set_queries(limit = nil)
-        @queries = Blazer::Query.named.select(:id, :name, :creator_id, :statement)
+        @queries = Blazer::Query.named.select(:id, :name, :creator_id, :statement, :created_at)
         @queries = @queries.includes(:creator) if Blazer.user_class
 
         if blazer_user && params[:filter] == "mine"
@@ -294,6 +295,7 @@ module Blazer
               name: q.name,
               creator: blazer_user && q.try(:creator) == blazer_user ? "You" : q.try(:creator).try(Blazer.user_name),
               vars: q.variables.join(", "),
+              created_at: q.created_at.strftime('%Y-%m-%d %H:%M:%S %Z'),
               to_param: q.to_param
             }
           end
