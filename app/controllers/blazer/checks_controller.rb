@@ -19,7 +19,7 @@ module Blazer
       @check.creator = blazer_user if @check.respond_to?(:creator_id=) && blazer_user
 
       if @check.save
-        redirect_to query_path(@check.query)
+        redirect_to query_path(@check.query), "Check created successfully."
       else
         render_errors @check
       end
@@ -27,7 +27,7 @@ module Blazer
 
     def update
       if @check.update(check_params)
-        redirect_to query_path(@check.query)
+        redirect_to query_path(@check.query), "Check updated successfully."
       else
         render_errors @check
       end
@@ -35,7 +35,7 @@ module Blazer
 
     def destroy
       @check.destroy
-      redirect_to checks_path
+      redirect_to checks_path, "Check deleted successfully."
     end
 
     def run

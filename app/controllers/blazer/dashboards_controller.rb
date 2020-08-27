@@ -13,7 +13,7 @@ module Blazer
       @dashboard.creator = blazer_user if @dashboard.respond_to?(:creator_id=) && blazer_user
 
       if update_dashboard(@dashboard)
-        redirect_to dashboard_path(@dashboard)
+        redirect_to dashboard_path(@dashboard), notice: "Dashboard created successfully."
       else
         render_errors @dashboard
       end
@@ -43,7 +43,7 @@ module Blazer
 
     def update
       if update_dashboard(@dashboard)
-        redirect_to dashboard_path(@dashboard, variable_params(@dashboard))
+        redirect_to dashboard_path(@dashboard, variable_params(@dashboard)), notice: "Dashboard updated successfully."
       else
         render_errors @dashboard
       end
@@ -51,7 +51,7 @@ module Blazer
 
     def destroy
       @dashboard.destroy
-      redirect_to dashboards_path
+      redirect_to dashboards_path, notice: "Dashboard deleted successfully."
     end
 
     def refresh

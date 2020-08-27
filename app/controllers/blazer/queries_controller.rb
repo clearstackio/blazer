@@ -46,7 +46,7 @@ module Blazer
       @query.creator = blazer_user if @query.respond_to?(:creator)
 
       if @query.save
-        redirect_to query_path(@query, variable_params(@query))
+        redirect_to query_path(@query, variable_params(@query)), notice: "Query created successfully."
       else
         render_errors @query
       end
@@ -169,7 +169,7 @@ module Blazer
         @query.errors.add(:base, "Sorry, permission denied")
       end
       if @query.errors.empty? && @query.update(query_params)
-        redirect_to query_path(@query, variable_params(@query))
+        redirect_to query_path(@query, variable_params(@query)), notice: "Query updated successfully."
       else
         render_errors @query
       end
@@ -177,7 +177,7 @@ module Blazer
 
     def destroy
       @query.destroy if @query.editable?(blazer_user)
-      redirect_to root_path
+      redirect_to root_path, notice: "Query deleted successfully."
     end
 
     def tables
