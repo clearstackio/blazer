@@ -51,7 +51,7 @@ module Blazer
 
     def destroy
       @dashboard.destroy
-      redirect_to dashboards_path, notice: "Dashboard deleted successfully."
+      redirect_to root_path, notice: "Dashboard deleted successfully."
     end
 
     def refresh
