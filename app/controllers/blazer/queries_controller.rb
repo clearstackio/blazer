@@ -260,6 +260,13 @@ module Blazer
           end
         end
 
+        @columns, @rows = helpers.sanitize_blazer_data(
+          columns: @columns,
+          rows: @rows,
+          query: @query,
+          params: params
+        )
+
         respond_to do |format|
           format.html do
             render layout: false
