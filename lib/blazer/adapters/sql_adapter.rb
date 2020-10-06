@@ -279,7 +279,7 @@ module Blazer
       end
 
       def parse_table_name_from_statement(statement)
-        table_name_regex = /FROM ([A-Z]+)(_[A-Z]+)*/
+        table_name_regex = eval(Blazer.settings['table_name_regex'])
         table_name = table_name_regex.match(statement&.upcase)
         table_name.to_s.split(' ').last
       end
