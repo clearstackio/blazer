@@ -1,5 +1,8 @@
 module Blazer
   class Query < Record
+
+    include ::Blazer::NameValidator
+
     belongs_to :creator, optional: true, class_name: Blazer.user_class.to_s if Blazer.user_class
     has_many :checks, dependent: :destroy
     has_many :dashboard_queries, dependent: :destroy
@@ -8,7 +11,7 @@ module Blazer
 
     validates :statement, presence: true
 
-    scope :named, -> { where("blazer_queries.name <> ''") }
+    scope :named, -> { where("blazer_queries.name IS NOT NULL") }
 
     def to_param
       [id, name].compact.join("-").gsub("'", "").parameterize
