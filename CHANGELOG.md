@@ -1,3 +1,18 @@
+## 2.3.0 (2020-11-16)
+
+- Added support for archiving queries
+- Added experimental support for uploads
+
+## 2.2.8 (2020-11-01)
+
+- Fixed error when deleting dashboard
+
+## 2.2.7 (2020-09-07)
+
+- Use `datetime` type in migration
+- Fixed unpermitted parameters on dashboard page
+- Fixed deprecation warnings in Ruby 2.7
+
 ## 2.2.6 (2020-07-21)
 
 - Added experimental support for InfluxDB

@@ -39,11 +39,18 @@ module Blazer
       if params[:fork_query_id]
         @query.statement ||= Blazer::Query.find(params[:fork_query_id]).try(:statement)
       end
+      if params[:upload_id]
+        upload = Blazer::Upload.find(params[:upload_id])
+        upload_settings = Blazer.settings["uploads"]
+        @query.data_source ||= upload_settings["data_source"]
+        @query.statement ||= "SELECT * FROM #{upload.table_name} LIMIT 10"
+      end
     end
 
     def create
       @query = Blazer::Query.new(query_params)
       @query.creator = blazer_user if @query.respond_to?(:creator)
+      @query.status = "active" if @query.respond_to?(:status)
 
       if @query.save
         redirect_to query_path(@query, variable_params(@query)), notice: "Query created successfully."
@@ -64,6 +71,8 @@ module Blazer
         @smart_vars[var] = smart_var if smart_var
         @sql_errors << error if error
       end
+
+      @query.update!(status: "active") if @query.try(:status) == "archived"
 
       Blazer.transform_statement.call(data_source, @statement) if Blazer.transform_statement
     end
@@ -287,7 +296,7 @@ module Blazer
           @queries = queries_by_ids(Blazer::Audit.where(user_id: blazer_user.id).order(created_at: :desc).limit(500).pluck(:query_id).uniq)
         else
           @queries = @queries.limit(limit) if limit
-          @queries = @queries.order(:name)
+          @queries = @queries.active.order(:name)
         end
         @queries = @queries.to_a
 
@@ -309,7 +318,7 @@ module Blazer
       end
 
       def queries_by_ids(favorite_query_ids)
-        queries = Blazer::Query.named.where(id: favorite_query_ids)
+        queries = Blazer::Query.active.named.where(id: favorite_query_ids)
         queries = queries.includes(:creator) if Blazer.user_class
         queries = queries.index_by(&:id)
         favorite_query_ids.map { |query_id| queries[query_id] }.compact

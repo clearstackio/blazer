@@ -12,6 +12,7 @@ module Blazer
     validates :statement, presence: true
 
     scope :named, -> { where("blazer_queries.name IS NOT NULL") }
+    scope :active, -> { column_names.include?("status") ? where(status: "active") : all }
 
     def to_param
       [id, name].compact.join("-").gsub("'", "").parameterize
