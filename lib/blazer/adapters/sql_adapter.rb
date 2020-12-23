@@ -84,7 +84,7 @@ module Blazer
         if sqlserver?
           "SELECT TOP (10) * FROM {table}"
         elsif oracle_enhanced?
-          "SELECT * FROM {table} WHERE ROWNUM <= 10"
+          "SELECT * FROM (SELECT * FROM {table} ORDER BY created_at) WHERE ROWNUM <= 10"
         else
           "SELECT * FROM {table} LIMIT 10"
         end
