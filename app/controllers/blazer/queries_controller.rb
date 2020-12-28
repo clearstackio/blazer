@@ -20,6 +20,7 @@ module Blazer
             name: d.name,
             creator: blazer_user && d.try(:creator) == blazer_user ? "You" : d.try(:creator).try(Blazer.user_name),
             to_param: d.to_param,
+            created_at: d.created_at.strftime('%m/%d/%y %I:%M %p'),
             dashboard: true
           }
         end
@@ -52,7 +53,7 @@ module Blazer
       @query.status = "active" if @query.respond_to?(:status)
 
       if @query.save
-        redirect_to query_path(@query, variable_params(@query))
+        redirect_to query_path(@query, variable_params(@query)), notice: "Query created successfully."
       else
         render_errors @query
       end
@@ -184,7 +185,7 @@ module Blazer
         @query.errors.add(:base, "Sorry, permission denied")
       end
       if @query.errors.empty? && @query.update(query_params)
-        redirect_to query_path(@query, variable_params(@query))
+        redirect_to query_path(@query, variable_params(@query)), notice: "Query updated successfully."
       else
         render_errors @query
       end
@@ -192,7 +193,7 @@ module Blazer
 
     def destroy
       @query.destroy if @query.editable?(blazer_user)
-      redirect_to root_path
+      redirect_to root_path, notice: "Query deleted successfully."
     end
 
     def tables
@@ -274,6 +275,13 @@ module Blazer
           end
         end
 
+        @columns, @rows = helpers.sanitize_blazer_data(
+          columns: @columns,
+          rows: @rows,
+          query: @query,
+          params: params
+        )
+
         render_cohort_analysis if @cohort_analysis && !@error
 
         respond_to do |format|
@@ -287,7 +295,7 @@ module Blazer
       end
 
       def set_queries(limit = nil)
-        @queries = Blazer::Query.named.select(:id, :name, :creator_id, :statement)
+        @queries = Blazer::Query.named.select(:id, :name, :creator_id, :statement, :created_at)
         @queries = @queries.includes(:creator) if Blazer.user_class
 
         if blazer_user && params[:filter] == "mine"
@@ -311,6 +319,7 @@ module Blazer
               name: q.name,
               creator: blazer_user && q.try(:creator) == blazer_user ? "You" : q.try(:creator).try(Blazer.user_name),
               vars: q.variables.join(", "),
+              created_at: q.created_at.strftime('%m/%d/%y %I:%M %p'),
               to_param: q.to_param
             }
           end
